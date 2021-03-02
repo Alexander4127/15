@@ -1,0 +1,200 @@
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <queue>
+#include <utility>
+#include <vector>
+
+class Game {
+private:
+    std::vector<std::vector<int>> field;
+    std::pair<int, int> pos;
+    int size;
+    int count = 0;
+
+    class Position {
+    public:
+        std::vector<std::vector<int>> pos_field;
+        std::pair<int, int> position;
+        int diff;
+        std::vector<std::pair<int, int>> way;
+
+
+        Position(std::vector<std::vector<int>>& f, std::pair<int, int> p) {
+            pos_field = f;
+            position = p;
+            diff = FindDiff();
+        }
+
+        Position(Position other, std::pair<int, int> op) {
+            way = other.way;
+            pos_field = other.pos_field;
+            way.push_back(op);
+            Swap(op, other.position);
+            position = op;
+            diff = FindDiff();
+        }
+
+        void Swap(const std::pair<int, int>& p1, const std::pair<int, int>& p2) {
+            auto el = pos_field[p1.first][p1.second];
+            pos_field[p1.first][p1.second] = pos_field[p2.first][p2.second];
+            pos_field[p2.first][p2.second] = el;
+        }
+
+        bool operator<(const Position& pos1) const {
+            return diff < pos1.diff;
+        }
+
+        int FindDiff() const {
+            int dif = 0;
+            int n = static_cast<int>(pos_field.size());
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < n; ++j) {
+                    int row = (pos_field[i][j] - 1) / 4, col = (pos_field[i][j] - 1) % 4;
+                    if (pos_field[i][j] == 0) {
+                        row = col = n - 1;
+                    }
+                    dif += std::abs(row - i) + std::abs(col - j);
+                }
+            }
+
+            return dif;
+        }
+    };
+
+public:
+    Game(std::vector<std::vector<int>> v) {
+        field = v;
+        size = v.size();
+        pos = FindPos();
+    };
+
+    std::pair<int, int> FindPos() const {
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                if (field[i][j] == 0) {
+                    return {i, j};
+                }
+            }
+        }
+
+        return {0, 0};
+    }
+
+    bool CheckSign() const {
+        int count_inv = 0;
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                for (int k = 0; k < size; ++k) {
+                    for (int l = 0; l < size; ++l) {
+                        if (size * k + l > size * i + j && field[k][l] < field[i][j]) {
+                            ++count_inv;
+                        }
+                    }
+                }
+            }
+        }
+
+        return (count_inv % 2 == (pos.first + pos.second) % 2);
+    }
+
+    void process() {
+        std::priority_queue<Position> variants;
+        variants.push(Position(field, pos));
+        if (variants.top().diff == 0) {
+            PrintResult(variants.top());
+            return;
+        } else {
+            count = 1;
+        }
+
+        while (count < 50) {
+            std::priority_queue<Position> new_variants;
+            while (!variants.empty()) {
+                auto cur_Pos = variants.top();
+                variants.pop();
+                int x = cur_Pos.position.first, y = cur_Pos.position.second;
+                std::vector<std::pair<int, int>> d = {{1,  0},
+                                                      {0,  1},
+                                                      {-1, 0},
+                                                      {0,  -1}};
+                for (const auto&[dx, dy] : d) {
+                    if (0 <= x + dx && x + dx < size &&
+                        0 <= y + dy && y + dy < size) {
+                        Position element = Position(cur_Pos, {x + dx, y + dy});
+                        if (element.diff == 0) {
+                            PrintResult(element);
+                            return;
+                        }
+                        new_variants.push(element);
+                    }
+                    if (new_variants.size() > 1000) {
+                        new_variants.pop();
+                    }
+                }
+            }
+
+            ++count;
+            variants = new_variants;
+        }
+
+        std::cout << "No decision\n";
+    }
+
+    void PrintResult(const Position& res) {
+        std::cout << count << " steps" << '\n';
+        print(field);
+        for (const auto& next_pos : res.way) {
+            auto a = field[pos.first][pos.second];
+            field[pos.first][pos.second] = field[next_pos.first][next_pos.second];
+            field[next_pos.first][next_pos.second] = a;
+            std::cout << "\n-----------------------\n";
+            print(field);
+            pos = next_pos;
+        }
+    }
+
+    void print(const std::vector<std::vector<int>>& res) const {
+        for (size_t i = 0; i < res.size(); ++i) {
+            for (size_t j = 0; j < res.size(); ++j) {
+                std::cout << res[i][j];
+                if (j < res.size() - 1) {
+                    std::cout << '\t';
+                }
+            }
+            std::cout << '\n';
+        }
+    }
+};
+
+int main() {
+    std::cin.tie(nullptr);
+    std::ios_base::sync_with_stdio(false);
+
+    Game field = Game({{1, 2, 3, 4},
+                       {5, 6, 7, 8},
+                       {9, 10, 11, 12},
+                       {13, 14, 0, 15}});
+
+
+//    std::vector<int> v;
+//    int element;
+//    while (std::cin >> element) {
+//        v.push_back(element);
+//    }
+//    int n = std::sqrt(v.size());
+//    std::vector<std::vector<int>> v1;
+//    for (int i = 0; i < n; ++i) {
+//        v1.emplace_back();
+//        for (int j = 0; j < n; ++j) {
+//            v1.back().push_back(v[n * i + j]);
+//        }
+//    }
+//    Game field = Game(v1);
+
+    if (field.CheckSign()) {
+        std::cout << "No decision\n";
+    } else {
+        field.process();
+    }
+}
