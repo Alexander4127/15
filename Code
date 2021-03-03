@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
-#include <queue>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -12,8 +12,8 @@ private:
     int size;
     int count = 0;
 
-    class Position {
-    public:
+public:
+    struct Position {
         std::vector<std::vector<int>> pos_field;
         std::pair<int, int> position;
         int diff;
@@ -35,14 +35,11 @@ private:
             diff = FindDiff();
         }
 
+
         void Swap(const std::pair<int, int>& p1, const std::pair<int, int>& p2) {
             auto el = pos_field[p1.first][p1.second];
             pos_field[p1.first][p1.second] = pos_field[p2.first][p2.second];
             pos_field[p2.first][p2.second] = el;
-        }
-
-        bool operator<(const Position& pos1) const {
-            return diff < pos1.diff;
         }
 
         int FindDiff() const {
@@ -60,6 +57,11 @@ private:
 
             return dif;
         }
+
+        bool operator ==(const Position& pos1) const {
+            return pos_field == pos1.pos_field;
+        }
+
     };
 
 public:
@@ -98,21 +100,32 @@ public:
         return (count_inv % 2 == (pos.first + pos.second) % 2);
     }
 
+    struct MyHash {
+        std::size_t operator()(Position const& el) const noexcept {
+            int h = 0;
+            for (size_t i = 0; i < el.pos_field.size(); ++i) {
+                h += el.pos_field[i][i];
+            }
+            std::size_t h1 = std::hash<int>{}(h);
+            return h1;
+        }
+    };
+
     void process() {
-        std::priority_queue<Position> variants;
-        variants.push(Position(field, pos));
-        if (variants.top().diff == 0) {
-            PrintResult(variants.top());
+        std::unordered_set<Position, MyHash> variants = {Position(field, pos)};
+        variants.insert(Position(field, pos));
+        if ((*variants.begin()).diff == 0) {
+            PrintResult(*variants.begin());
             return;
         } else {
             count = 1;
         }
 
-        while (count < 50) {
-            std::priority_queue<Position> new_variants;
+        while (count < 100) {
+            std::unordered_set<Position, MyHash> new_variants;
             while (!variants.empty()) {
-                auto cur_Pos = variants.top();
-                variants.pop();
+                auto cur_Pos = *variants.begin();
+                variants.erase(variants.begin());
                 int x = cur_Pos.position.first, y = cur_Pos.position.second;
                 std::vector<std::pair<int, int>> d = {{1,  0},
                                                       {0,  1},
@@ -126,10 +139,15 @@ public:
                             PrintResult(element);
                             return;
                         }
-                        new_variants.push(element);
+                        new_variants.insert(element);
                     }
-                    if (new_variants.size() > 1000) {
-                        new_variants.pop();
+                    if (new_variants.size() > 2000) {
+                        auto it = std::max_element(new_variants.begin(),
+                                                   new_variants.end(),
+                                                   [](const Position& p1, const Position& p2) {
+                                                       return p1.diff < p2.diff;
+                                                   });
+                        new_variants.erase(it);
                     }
                 }
             }
@@ -171,10 +189,10 @@ int main() {
     std::cin.tie(nullptr);
     std::ios_base::sync_with_stdio(false);
 
-    Game field = Game({{1, 2, 3, 4},
-                       {5, 6, 7, 8},
-                       {9, 10, 11, 12},
-                       {13, 14, 0, 15}});
+    Game field = Game({{2, 5, 11, 14},
+                       {13, 4, 1, 7},
+                       {3, 9, 8, 12},
+                       {0, 10, 15, 6}});
 
 
 //    std::vector<int> v;
